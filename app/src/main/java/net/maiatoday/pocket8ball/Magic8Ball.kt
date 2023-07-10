@@ -1,23 +1,20 @@
 package net.maiatoday.pocket8ball
 
-import com.squareup.otto.Subscribe
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import net.maiatoday.pocket8ball.di.BusModule
-import net.maiatoday.pocket8ball.di.MessageFromeTheAether
-import net.maiatoday.pocket8ball.di.ShakeItUp
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 interface Magic8Ball {
     suspend fun shake()
-    fun release()
+    val answer: StateFlow<String>
 }
 
 class RealMagic8Ball : Magic8Ball {
-    init {
-        BusModule.bus.register(this)
-    }
+
+    private val _answer = MutableStateFlow("")
+    override val answer: StateFlow<String>
+        get() = _answer.asStateFlow()
 
     private val answers: List<String> = listOf(
         "It is certain.",
@@ -42,24 +39,10 @@ class RealMagic8Ball : Magic8Ball {
         "Very doubtful."
     )
 
-    @Subscribe
-    fun shakeItUp(event: ShakeItUp) {
-        CoroutineScope(Dispatchers.Main).launch {
-            shake()
-        }
-    }
-
     override suspend fun shake() {
         val randomMillis = (500 + 1000 * Math.random()).toLong()
         delay(randomMillis)
-        latest = answers.shuffled().first()
-        BusModule.bus.post(MessageFromeTheAether(latest))
-    }
-
-    private var latest: String = ""
-
-    override fun release() {
-        BusModule.bus.unregister(this)
+        _answer.value = answers.shuffled().first()
     }
 
 }
