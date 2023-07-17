@@ -1,23 +1,27 @@
 package net.maiatoday.pocket8ball
 
-import com.squareup.otto.Subscribe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import net.maiatoday.pocket8ball.di.BusModule
-import net.maiatoday.pocket8ball.di.MessageFromeTheAether
+import net.maiatoday.pocket8ball.di.MessageFromTheAether
 import net.maiatoday.pocket8ball.di.ShakeItUp
 
 interface Magic8Ball {
     suspend fun shake()
-    fun release()
 }
 
 class RealMagic8Ball : Magic8Ball {
     init {
-        BusModule.bus.register(this)
+        CoroutineScope(Dispatchers.Main).launch {
+            BusModule.bus.filter { event -> event is ShakeItUp }
+                .collectLatest { shake() }
+        }
     }
+
 
     private val answers: List<String> = listOf(
         "It is certain.",
@@ -42,24 +46,13 @@ class RealMagic8Ball : Magic8Ball {
         "Very doubtful."
     )
 
-    @Subscribe
-    fun shakeItUp(event: ShakeItUp) {
-        CoroutineScope(Dispatchers.Main).launch {
-            shake()
-        }
-    }
-
     override suspend fun shake() {
         val randomMillis = (500 + 1000 * Math.random()).toLong()
         delay(randomMillis)
         latest = answers.shuffled().first()
-        BusModule.bus.post(MessageFromeTheAether(latest))
+        BusModule.post(MessageFromTheAether(latest))
     }
 
     private var latest: String = ""
-
-    override fun release() {
-        BusModule.bus.unregister(this)
-    }
 
 }

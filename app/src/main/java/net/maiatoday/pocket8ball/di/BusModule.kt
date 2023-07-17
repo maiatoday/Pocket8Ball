@@ -1,11 +1,25 @@
 package net.maiatoday.pocket8ball.di
 
-import com.squareup.otto.Bus
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
-object BusModule {
-    val bus = Bus()
+interface FlowBus {
+    val bus: SharedFlow<BusEvent>
+    suspend fun post(event: BusEvent)
 }
 
-data class MessageFromeTheAether(val answer: String)
+object BusModule: FlowBus {
+    private val _bus = MutableSharedFlow<BusEvent>(replay = 0)
+    override val bus: SharedFlow<BusEvent>
+        get() = _bus
 
-object ShakeItUp
+    override suspend fun post(event: BusEvent) {
+        _bus.emit(event)
+    }
+}
+
+sealed class BusEvent
+
+data class MessageFromTheAether(val answer: String) : BusEvent()
+
+object ShakeItUp : BusEvent()
